@@ -5,3 +5,4 @@ gvm/DriverTest/*
 cscope*
 Release
 gvm/gvm.vcxproj.user
+__asm.h

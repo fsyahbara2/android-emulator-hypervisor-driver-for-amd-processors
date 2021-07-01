@@ -5,7 +5,6 @@
  *
  * Copyright (C) 2006 Qumranet, Inc.
  * Copyright 2010 Red Hat, Inc. and/or its affiliates.
- * Copyright 2019 Google LLC
  *
  * Authors:
  *   Yaniv Kamay  <yaniv@qumranet.com>
@@ -18,7 +17,6 @@
  *
  */
 
-#if 0
 #include <linux/ratelimit.h>
 
 char const *audit_point_name[] = {
@@ -280,7 +278,7 @@ static void mmu_audit_disable(void)
 static int mmu_audit_set(const char *val, const struct kernel_param *kp)
 {
 	int ret;
-	size_t enable;
+	unsigned long enable;
 
 	ret = kstrtoul(val, 10, &enable);
 	if (ret < 0)
@@ -306,4 +304,3 @@ static const struct kernel_param_ops audit_param_ops = {
 };
 
 arch_param_cb(mmu_audit, &audit_param_ops, &mmu_audit, 0644);
-#endif

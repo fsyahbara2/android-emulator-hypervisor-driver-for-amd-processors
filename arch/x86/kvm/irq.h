@@ -1,7 +1,6 @@
 /*
  * irq.h: in kernel interrupt controller related definitions
  * Copyright (c) 2007, Intel Corporation.
- * Copyright 2019 Google LLC
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -23,7 +22,10 @@
 #ifndef __IRQ_H
 #define __IRQ_H
 
+#include <linux/mm_types.h>
+#include <linux/hrtimer.h>
 #include <linux/kvm_host.h>
+#include <linux/spinlock.h>
 
 #include <kvm/iodev.h>
 #include "ioapic.h"
@@ -31,7 +33,7 @@
 
 #define PIC_NUM_PINS 16
 #define SELECT_PIC(irq) \
-	((irq) < 8 ? GVM_IRQCHIP_PIC_MASTER : GVM_IRQCHIP_PIC_SLAVE)
+	((irq) < 8 ? KVM_IRQCHIP_PIC_MASTER : KVM_IRQCHIP_PIC_SLAVE)
 
 struct kvm;
 struct kvm_vcpu;
@@ -68,7 +70,7 @@ struct kvm_pic {
 	struct kvm_io_device dev_slave;
 	struct kvm_io_device dev_eclr;
 	void (*ack_notifier)(void *opaque, int irq);
-	size_t irq_states[PIC_NUM_PINS];
+	unsigned long irq_states[PIC_NUM_PINS];
 };
 
 struct kvm_pic *kvm_create_pic(struct kvm *kvm);
@@ -89,12 +91,18 @@ static inline int pic_in_kernel(struct kvm *kvm)
 	return ret;
 }
 
+static inline int irqchip_split(struct kvm *kvm)
+{
+	return kvm->arch.irqchip_split;
+}
+
 static inline int irqchip_in_kernel(struct kvm *kvm)
 {
 	struct kvm_pic *vpic = pic_irqchip(kvm);
 	bool ret;
 
 	ret = (vpic != NULL);
+	ret |= irqchip_split(kvm);
 
 	/* Read vpic before kvm->irq_routing.  */
 	smp_rmb();
@@ -106,6 +114,9 @@ void kvm_pic_reset(struct kvm_kpic_state *s);
 void kvm_inject_pending_timer_irqs(struct kvm_vcpu *vcpu);
 void kvm_inject_apic_timer_irqs(struct kvm_vcpu *vcpu);
 void kvm_apic_nmi_wd_deliver(struct kvm_vcpu *vcpu);
+void __kvm_migrate_apic_timer(struct kvm_vcpu *vcpu);
+void __kvm_migrate_pit_timer(struct kvm_vcpu *vcpu);
+void __kvm_migrate_timers(struct kvm_vcpu *vcpu);
 
 int apic_has_pending_timer(struct kvm_vcpu *vcpu);
 
